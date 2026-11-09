@@ -1,4 +1,4 @@
-package com.auth.auth_app.service;
+package com.auth.auth_app.service.impl;
 
 import com.auth.auth_app.dto.UserDto;
 import com.auth.auth_app.entity.Provider;
@@ -6,8 +6,8 @@ import com.auth.auth_app.entity.User;
 import com.auth.auth_app.exception.ResourceNotFoundException;
 import com.auth.auth_app.helper.UserHelper;
 import com.auth.auth_app.repositary.UserRepositary;
+import com.auth.auth_app.service.UserService;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
