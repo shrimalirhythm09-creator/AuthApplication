@@ -5,7 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -52,8 +54,13 @@ public class SecurityConfig {
                             authException.printStackTrace();
                             response.setStatus(401);
                             response.setContentType("application/json");
-                            String message = "Unauthorized Access" + authException.getMessage();
-                            Map<String,String> errorMap =
+                            String error = (String) request.getAttribute("Error");
+                            String message = "UnAuthorized Access " + authException.getMessage();
+                            if (error!=null){
+                                message = error;
+                            }
+
+                            Map<String,Object> errorMap =
                                     Map.of("message",message,
                                             "status",String.valueOf(401),
                                             "statusCode", Integer.toString(401));
@@ -62,6 +69,12 @@ public class SecurityConfig {
                         }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration){
+        return configuration.getAuthenticationManager();
+
     }
 
 

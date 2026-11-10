@@ -4,6 +4,7 @@ package com.auth.auth_app.security;
 import com.auth.auth_app.helper.UserHelper;
 import com.auth.auth_app.repositary.UserRepositary;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -98,10 +99,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         }
                     });
 
-        } catch (JwtException | IllegalArgumentException e) {
-            SecurityContextHolder.clearContext();
-        }
+        } catch (ExpiredJwtException e) {
+            request.setAttribute("error", "Token Expired");
 
+        } catch (Exception e) {
+            request.setAttribute("error", "Invalid Token");
+        }
         filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        return request.getRequestURI().startsWith("/api/v1/auth/");
     }
 }

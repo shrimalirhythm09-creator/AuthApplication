@@ -8,6 +8,8 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SecureDigestAlgorithm;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.tomcat.util.descriptor.web.SecurityRoleRef;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@Getter
+@Setter
 public class JwtService {
 
     private final SecretKey key;
