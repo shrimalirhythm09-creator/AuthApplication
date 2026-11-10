@@ -108,5 +108,14 @@ public class JwtService {
         Claims c = parseToken(token);
         return c.getId();
     }
+    public List<String> getRoles(String token) {
+        Claims claims = parseToken(token);
+        return claims.get("roles", List.class);
+    }
+
+    public String getEmail(String token) {
+        Claims claims = parseToken(token);
+        return claims.get("email", String.class);
+    }
 
 }
