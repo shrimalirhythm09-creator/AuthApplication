@@ -33,15 +33,31 @@ public class JwtService {
     private final long refreshTtlSeconds;
     private final String issuer;
 
+
     public JwtService(
             @Value("${security.jwt.secret}") String secret,
             @Value("${security.jwt.access-ttl-seconds}") long accessTtlSeconds,
             @Value("${security.jwt.refresh-ttl-seconds}") long refreshTtlSeconds,
-            @Value("${security.jwt.issuer}") String issuer) {
-        if (secret == null || secret.length()<64){
-            throw new IllegalArgumentException("Invalid Secret");
+            @Value("${security.jwt.issuer}") String issuer
+    ) {
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(secret);
+
+            // HS512 requires at least 64 bytes (512 bits).
+            if (keyBytes.length < 64) {
+                throw new IllegalArgumentException(
+                        "JWT secret must contain at least 64 decoded bytes for HS512"
+                );
+            }
+
+            this.key = Keys.hmacShaKeyFor(keyBytes);
+
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    "Invalid JWT secret. Check Base64 encoding and key length.", e
+            );
         }
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+
         this.accessTtlSeconds = accessTtlSeconds;
         this.refreshTtlSeconds = refreshTtlSeconds;
         this.issuer = issuer;
