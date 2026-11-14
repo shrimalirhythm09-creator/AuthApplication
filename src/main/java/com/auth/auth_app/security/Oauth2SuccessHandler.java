@@ -12,7 +12,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -42,61 +41,78 @@ public class Oauth2SuccessHandler implements AuthenticationSuccessHandler {
             Authentication authentication
     ) throws IOException, ServletException {
 
-        logger.info("Google OAuth2 authentication successful");
-
-        OAuth2User oauth2User =
-                (OAuth2User) authentication.getPrincipal();
-
-        String registrationId = "unknown";
-
-        if (authentication instanceof OAuth2AuthenticationToken token) {
-            registrationId = token.getAuthorizedClientRegistrationId();
+        if (!(authentication instanceof OAuth2AuthenticationToken token)) {
+            throw new IllegalStateException("Invalid OAuth2 authentication");
         }
+
+        String registrationId = token.getAuthorizedClientRegistrationId();
+        OAuth2User oauth2User = token.getPrincipal();
+
+        logger.info("OAuth2 login successful with provider: {}", registrationId);
 
         User user;
 
-        if (registrationId.equals("google")) {
-            assert oauth2User != null;
-            String googleId =
-                    oauth2User.getAttribute("sub");
+        if ("google".equals(registrationId)) {
 
-            String email =
-                    oauth2User.getAttribute("email");
-
-            String name =
-                    oauth2User.getAttribute("name");
-
-            String picture =
-                    oauth2User.getAttribute("picture");
+            String email = oauth2User.getAttribute("email");
+            String name = oauth2User.getAttribute("name");
+            String picture = oauth2User.getAttribute("picture");
 
             if (email == null || email.isBlank()) {
-                throw new IllegalStateException(
-                        "Google account email is missing"
-                );
+                throw new IllegalStateException("Google email is missing");
             }
 
             User newUser = User.builder()
                     .email(email)
                     .name(name)
                     .image(picture)
+                    .enable(true)
                     .provider(Provider.GOOGLE)
                     .build();
 
-            // Find existing user or create a new one.
             user = userRepositary.findByEmail(email)
                     .orElseGet(() -> userRepositary.save(newUser));
 
             logger.info("Google user resolved successfully");
+
+        } else if ("github".equals(registrationId)) {
+
+            String githubId = String.valueOf(oauth2User.getAttribute("id"));
+            String username = oauth2User.getAttribute("login");
+            String name = oauth2User.getAttribute("name");
+            String picture = oauth2User.getAttribute("avatar_url");
+            String email = oauth2User.getAttribute("email");
+
+            if (email == null || email.isBlank()) {
+                throw new IllegalStateException(
+                        "GitHub email is private or unavailable. Configure GitHub email retrieval."
+                );
+            }
+
+            if (name == null || name.isBlank()) {
+                name = username;
+            }
+
+            User newUser = User.builder()
+                    .email(email)
+                    .name(name)
+                    .image(picture)
+                    .provider(Provider.GITHUB)
+                    .build();
+
+            user = userRepositary.findByEmail(email)
+                    .orElseGet(() -> userRepositary.save(newUser));
+
+            logger.info("GitHub user resolved successfully: {}", username);
+
         } else {
             throw new IllegalStateException(
-                    "Invalid OAuth2 registration ID: " + registrationId
+                    "Unsupported OAuth2 registration ID: " + registrationId
             );
         }
 
-        // Generate a unique JTI for the refresh token.
         String jti = UUID.randomUUID().toString();
 
-        // Save refresh token information in the database.
         RefreshToken refreshTokenEntity = RefreshToken.builder()
                 .jti(jti)
                 .user(user)
@@ -111,14 +127,9 @@ public class Oauth2SuccessHandler implements AuthenticationSuccessHandler {
 
         refreshRepositary.save(refreshTokenEntity);
 
-        // Generate JWT tokens.
-        String accessToken =
-                jwtService.generateAccessToken(user);
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user, jti);
 
-        String refreshToken =
-                jwtService.generateRefreshToken(user, jti);
-
-        // Attach both cookies to the response.
         cookieService.attachAccessCookie(
                 response,
                 accessToken,
@@ -133,9 +144,9 @@ public class Oauth2SuccessHandler implements AuthenticationSuccessHandler {
 
         cookieService.addNoStoreHeader(response);
 
-        logger.info("JWT cookies attached successfully");
+        logger.info("{} JWT cookies attached successfully", registrationId);
 
-        // Redirect to frontend.
-
+        // Redirect to your frontend after successful login.
+        response.sendRedirect("http://localhost:3000");
     }
 }
